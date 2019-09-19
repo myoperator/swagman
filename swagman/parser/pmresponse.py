@@ -39,7 +39,7 @@ class pmresponse(object):
     
     def _schemaWalker(self, item):
         if item is None:
-            return None
+            return dict(type = 'string', nullable=True)
         (_type, _format) = python2schematypes[type(item)]
         schema = dict(type = _type)
         if isinstance(item, dict):
@@ -47,6 +47,8 @@ class pmresponse(object):
             for k, v in item.items():
                 schema['properties'][k] = self._schemaWalker(v)
         elif isinstance(item, int):
+            schema['format'] = _format
+        elif isinstance(item, bool):
             schema['format'] = _format
         elif isinstance(item, list):
             types = self.getArrayTypes(item)

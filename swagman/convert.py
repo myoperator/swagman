@@ -45,9 +45,10 @@ class Converter(object):
         #@TODO make this extend from basemapper
         #items = parser.getItems('http://{{PRIVATE_API_HOST}}/memcache/add') # returns list of paths
         items = parser.getItems()
-        schemas = parser.getSchemas()
+        # spec.add_item(item)
+        #schemas = parser.getSchemas()
 
-        print(schemas.get('http://{{PRIVATE_API_HOST}}/memcache/multi_update').get('MemcacheMultiUpdate200'))
+        #print(schemas.get('http://{{PRIVATE_API_HOST}}/memcache/multi_update').get('MemcacheMultiUpdate200'))
 
         # paths = parser.getItem('/memcache/add') # get dict of path (request, responses)
         # print(paths)
@@ -55,8 +56,6 @@ class Converter(object):
 
         #item = parser.getItem('http://{{PRIVATE_API_HOST}}/memcache/add')
         for _, item in items.items():
-            #spec.add_schema('Gist', schemas.get('http://{{PRIVATE_API_HOST}}/memcache/multi_update').get('MemcacheMultiUpdate200'))
-            #print(spec.get_ref('Gist'))
             spec.add_item(item)
             #break
 
