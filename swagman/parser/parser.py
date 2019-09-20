@@ -3,12 +3,52 @@ from .pmrequest import pmrequest
 from .pmresponse import pmresponse
 from .pmschema import pmschema
 
+# https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md#dataTypeFormat
+python2schematypes = {
+    int: ('integer', 'int32'),
+    list: ('array', None),
+    str: ('string', None),
+    bool: ('boolean', "null"),
+    dict: ('object', None),
+}
+
 class PostmanParser(object):
     def __init__(self, jsoncollection):
         self.pmcollection = jsoncollection
     
     def _parse(self):
         pass
+
+    @classmethod
+    def getArrayTypes(cls, items):
+        types = set()
+        for item in items:
+            (_type, _) = python2schematypes[type(item)]
+            types.add(_type)
+        return list(types)
+
+    @classmethod
+    def schemawalker(cls, item):
+        if item is None:
+            return dict(type = 'string', nullable=True)
+        (_type, _format) = python2schematypes[type(item)]
+        schema = dict(type = _type)
+        if isinstance(item, dict):
+            schema['properties'] = dict()
+            for k, v in item.items():
+                schema['properties'][k] = cls.schemawalker(v)
+        elif isinstance(item, int):
+            schema['format'] = _format
+        elif isinstance(item, list):
+            types = cls.getArrayTypes(item)
+            schema['items'] = dict()
+            if len(types) is 0:
+                schema['items'] = {}
+            elif len(types) is 1:
+                schema['items']['oneOf'] = [cls.schemawalker(v) for v in types]
+            else: 
+                schema['items'] = cls.schemawalker(types[0])
+        return schema
     
     @property
     def title(self):
@@ -80,7 +120,7 @@ class PostmanParser(object):
     @staticmethod
     def schemaParser(item):
         schema = dict()
-        key = PostmanParser.camelize(pmrequest(item['request']).getPath())
+        key = PostmanParser.camelize(pmrequest(item['request']).getPathNormalised())
         for response in item['response']:
             response = pmresponse(response)
             schemaresponse = pmschema(response)
