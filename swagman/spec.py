@@ -19,12 +19,13 @@ class Spec(object):
     description = 'A sample description'
     openapi_version = '3.0.0'
 
-    def __init__(self):
-        self.spec = CApiSpec(
+    def __init__(self, **options):
+        self.spec = APISpec(
             title= self.title,
             version= self.version,
             openapi_version = self.openapi_version,
-            info=dict(description= self.description)
+            plugins=(),
+            **options
         )
         self._counter = {}
 
@@ -35,7 +36,7 @@ class Spec(object):
         self.spec.version = version or self.version
     
     def set_description(self, description=''):
-        self.spec.options = dict(info = dict(description = (description or self.description)))
+        self.spec.options['info'] = dict(description = (description or self.description))
 
     def add_component_response(self, name, schema):
         self.spec.components.response(name, schema)
@@ -47,8 +48,6 @@ class Spec(object):
             self.spec.components.schema(name, schema)
         except DuplicateComponentNameError as e:
             # new schema has same repr?
-            oldschema = self.spec.get_schema(name)
-            print((oldschema, schema))
             self._counter[name] += 1
             self.spec.components.schema(name + '_' + str(self._counter[name]), schema)
         return self
@@ -88,6 +87,7 @@ class Spec(object):
             reqtype = response.getMethod().lower()
             responseSchema = PostmanParser.schemawalker(response.getBody())
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
+            operations[reqtype]['operationId'] = camelizeKey + reqtype
             operations[reqtype]['parameters'] = self.get_params(item['request'])
             if requestbody:
                 operations[reqtype]['requestBody'] = dict(

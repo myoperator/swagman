@@ -12,8 +12,8 @@ except IndexError:
     raise Exception('Please provide a filename to continue')
 
 converter = swagman.Converter(collection_file)
-swagger_json = converter.convert('yaml')
-# print(swagger_json)
+swagger_json = converter.convert('json')
+print(swagger_json)
 
 # spec = swagman.Spec()
 # spec.set_title('abcd')

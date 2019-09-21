@@ -19,8 +19,8 @@ class Converter(object):
     def parser(self):
         return PostmanParser(self.collection_json)
     
-    def spec(self):
-        return Spec()
+    def spec(self, baseurl='http://localhost'):
+        return Spec(**{'servers': [{'url': baseurl}]})
     
     def convert(self, format='json'):
         if not format in self._ALLOWED_FORMATS_:
