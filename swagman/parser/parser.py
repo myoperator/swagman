@@ -35,7 +35,9 @@ class PostmanParser(object):
         schema = dict(type = _type)
         if isinstance(item, dict):
             schema['properties'] = dict()
+            schema['required'] = []
             for k, v in item.items():
+                schema['required'].append(k)
                 schema['properties'][k] = cls.schemawalker(v)
         elif isinstance(item, int):
             schema['format'] = _format
