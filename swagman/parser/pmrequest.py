@@ -85,7 +85,10 @@ class pmrequest(object):
         return '/'+path if path[0] != '/' else path
 
     def getPath(self):
-        return map(lambda path: path[1:-1] if self.filterEnvVar(path) else path, self.request['url']['path'])
+        return list(map(lambda path: path[1:-1] if self.filterEnvVar(path) else path, self.request['url']['path']))
+    
+    def getPathRaw(self):
+        return self.request['url']['raw'] if 'url' in self.request else None
 
     def getBodyContent(self):
         if self.request['body']:
