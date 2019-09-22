@@ -91,7 +91,7 @@ class pmrequest(object):
         return self.request['url']['raw'] if 'url' in self.request else None
 
     def getBodyContent(self):
-        if self.request['body']:
+        if 'body' in self.request:
             return request_content_map.get(self.request['body']['mode'], '*/*')
         else: return None
 
