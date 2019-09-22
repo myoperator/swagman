@@ -6,8 +6,9 @@ from .parser import PostmanParser
 class Converter(object):
     _ALLOWED_FORMATS_ = ['json', 'yaml']
 
-    def __init__(self, collection_file=None):
+    def __init__(self, collection_file=None, ignoreschema=None):
         self.collection_json = self.from_collection(collection_file)
+        self.ignoreschema = ignoreschema
 
     def from_collection(self, collection_file=None):
         if not os.path.isfile(collection_file):
@@ -20,10 +21,10 @@ class Converter(object):
         return PostmanParser(self.collection_json)
     
     def spec(self, baseurl='http://localhost'):
-        return Spec(**{'servers': [{'url': baseurl}]})
-    
-    def convert(self, format='json'):
-        if not format in self._ALLOWED_FORMATS_:
+        return Spec(**{'servers': [{'url': baseurl}]}, ignoreschema = self.ignoreschema)
+
+    def convert(self, _format='json'):
+        if not _format in self._ALLOWED_FORMATS_:
             raise Exception('Format not allowed. Allowed formats: {}'.format(''.join(self._ALLOWED_FORMATS_)))
 
         parser = self.parser()
@@ -32,9 +33,9 @@ class Converter(object):
         # Map required attribs
         spec = self._mapper(spec, parser)
 
-        if format is 'json':
+        if _format == 'json':
             return json.dumps(spec.to_dict())
-        elif format is 'yaml':
+        else:
             return spec.to_yaml()
 
     def _mapper(self, spec, parser):

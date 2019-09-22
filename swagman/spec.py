@@ -1,7 +1,9 @@
 import random
-import re
+import re, json
 from apispec import APISpec
 from .parser.parser import PostmanParser
+import jsonpath_rw
+#from .ignore import IgnorePlugin
 from apispec.exceptions import DuplicateComponentNameError
 
 postman_to_openapi_typemap = {
@@ -19,14 +21,15 @@ class Spec(object):
     description = 'A sample description'
     openapi_version = '3.0.0'
 
-    def __init__(self, **options):
+    def __init__(self, ignoreschema=None, **options):
         self.spec = APISpec(
             title= self.title,
             version= self.version,
             openapi_version = self.openapi_version,
-            plugins=(),
+            plugins=[],
             **options
         )
+        self.ignoreschema = ignoreschema
         self._counter = {}
 
     def set_title(self, title=None):
@@ -70,6 +73,50 @@ class Spec(object):
                 })
         return requestparams
 
+    def json_get_path(self, match):
+        '''return an iterator based upon MATCH.PATH. Each item is a path component,
+    start from outer most item.'''
+        if match.context is not None:
+            for path_element in self.json_get_path(match.context):
+                yield path_element
+            yield str(match.path)
+
+    def json_update_path(self, json, path, value):
+        '''Update JSON dictionnary PATH with VALUE. Return updated JSON'''
+        try:
+            first = next(path)
+            # check if item is an array
+            if first.startswith('[') and first.endswith(']'):
+                try:
+                    first = int(first[1:-1])
+                except ValueError:
+                    pass
+            json[first] = self.json_update_path(json[first], path, value)
+            return json
+        except StopIteration:
+            return value
+
+    def getFilters(self, path, method, code):
+        if len(self.ignoreschema.keys()) > 0:
+            for _path, schemas in self.ignoreschema['schema'].items():
+                if PostmanParser.camelize(_path) == path:
+                    for _method, responsecode in schemas.items():
+                        if _method == method:
+                            return responsecode.get(code, [])
+        return []
+
+    def filterResponse(self, path, method, code, response):
+        responsejson = response.getBody()
+        filters = self.getFilters(path, method, code)
+        if len(filters) > 0:
+            for jsonfilter in filters:
+                jsonpath_expr = jsonpath_rw.parse(jsonfilter)
+                matches = jsonpath_expr.find(responsejson)
+                for match in matches:
+                    full_path = '/'.join(self.json_get_path(match))
+                    responsejson = self.json_update_path(responsejson, self.json_get_path(match), {})
+        return responsejson
+
     def get_operations(self, item):
         operations = dict(
             get = dict(responses = dict()),
@@ -85,7 +132,8 @@ class Spec(object):
         for response in item['responses']:
             code = response.getCode()
             reqtype = response.getMethod().lower()
-            responseSchema = PostmanParser.schemawalker(response.getBody())
+            responseBody = self.filterResponse(camelizeKey, reqtype, code, response)
+            responseSchema = PostmanParser.schemawalker(responseBody)
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
             operations[reqtype]['operationId'] = camelizeKey + reqtype
             operations[reqtype]['parameters'] = self.get_params(item['request'])
