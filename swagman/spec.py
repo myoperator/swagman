@@ -81,7 +81,7 @@ class Spec(object):
                 yield path_element
             yield str(match.path)
 
-    def json_update_path(self, json, path, value):
+    def json_update_path(self, json, path, value, skipkey=False):
         '''Update JSON dictionnary PATH with VALUE. Return updated JSON'''
         try:
             first = next(path)
@@ -91,7 +91,13 @@ class Spec(object):
                     first = int(first[1:-1])
                 except ValueError:
                     pass
-            json[first] = self.json_update_path(json[first], path, value)
+            if skipkey:
+                try:
+                    del json[first]
+                except Exception:
+                    pass
+            else:
+                json[first] = self.json_update_path(json[first], path, value, skipkey)
             return json
         except StopIteration:
             return value
@@ -104,17 +110,24 @@ class Spec(object):
                         if _method == method:
                             return responsecode.get(code, [])
         return []
+    
+    def parse_skip(self, expr):
+        type_explode = expr.split(':')
+        if len(type_explode) > 1 and type_explode[-1] == 'a':
+            return ''.join(type_explode[:-1]), True
+        return expr, False
 
     def filterResponse(self, path, method, code, response):
         responsejson = response.getBody()
         filters = self.getFilters(path, method, code)
         if len(filters) > 0:
             for jsonfilter in filters:
-                jsonpath_expr = jsonpath_rw.parse(jsonfilter)
+                expr, skip  = self.parse_skip(jsonfilter)
+                expr = expr if expr else jsonfilter
+                jsonpath_expr = jsonpath_rw.parse(expr)
                 matches = jsonpath_expr.find(responsejson)
                 for match in matches:
-                    full_path = '/'.join(self.json_get_path(match))
-                    responsejson = self.json_update_path(responsejson, self.json_get_path(match), {})
+                    responsejson = self.json_update_path(responsejson, self.json_get_path(match), {}, skip)
         return responsejson
 
     def get_operations(self, item):

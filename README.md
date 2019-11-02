@@ -64,16 +64,23 @@ Sometimes, your api responses have some data which varies. For instance, conside
 }
 ```
 
-You do want to record the `username`, `timestamp` fields, but what about `some-changing-key` field? What about fields inside `tags`? It may appear sometimes and can vary with request parameters.
+You do want to record the `username`, `timestamp` fields, but what about `some-changing-key` field? What about fields inside `tags`? You want to keep the `tags` key as it will always be included in response, but do not want to keep `some-changing-key` as it may or maynot appear in responses.
+
+**Something you may want the values of a key to ignore, while something you want the key value pair to be ignored alltogether**
 
 For such cases, you may not want to document them. For such purpose, **Ignore file** is used.
 
 In ignore file, you can document the fields you want the swagman to ignore. It uses the [jsonpath-rw](https://pypi.org/project/jsonpath-rw/) library and uses its syntax (which is quite easy to learn).
 
+**To ignore only values but keep the keys**, simple use the `jsonpath-rw` syntax that points to the key. For ex- `$.result.tags.[*]` will find everything inside `tags` field in `result` object.
+
+**To ignore both key and values**, simply use the above method, i.e. write your `jsonpath-rw` regex that matches the path, and *append* `:a` to it. For example, if you want to delete everything inside tag *including* tag field itself, you can do so by: `$.result.tags.[*]:a`
+
+
 Taking above example, you want to ignore following fields:
 
-- everything inside `tags`
-- `some-changing-key`
+- everything inside `tags` (ignore value but NOT the key `tags`)
+- `some-changing-key` field (ignore both key and value)
 
 You can define them in a file `ignore.yaml` as such:
 
@@ -83,7 +90,7 @@ schema:
      post:
        200:
          - '$.result.tags.[*]' //Ignore everything inside tags field
-         - '$.result.some-changing-key' //Ignore 'some-changing-field'
+         - '$.result.some-changing-key:a' //Ignore 'some-changing-field'. Note the leading :a 
 ```
 
 and then you can convert your postman collection to swagger definition without these fields:
@@ -91,6 +98,8 @@ and then you can convert your postman collection to swagger definition without t
 ```sh
 python run.py -i ignore.yaml postman-export.json swagger.yaml
 ```
+
+PS: Leading `:a` in jsonpath-rw syntax with ignore both the key and values, otherwise only values are ignored.
 
 ## Change swagger format
 
