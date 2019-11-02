@@ -66,7 +66,7 @@ Sometimes, your api responses have some data which varies. For instance, conside
 
 You do want to record the `username`, `timestamp` fields, but what about `some-changing-key` field? What about fields inside `tags`? You want to keep the `tags` key as it will always be included in response, but do not want to keep `some-changing-key` as it may or maynot appear in responses.
 
-**Something you may want the values of a key to ignore, while something you want the key value pair to be ignored alltogether**
+**Sometimes you may want to ignore only the values of a key, while sometimes you want the key value pair to be ignored alltogether**
 
 For such cases, you may not want to document them. For such purpose, **Ignore file** is used.
 
@@ -90,7 +90,7 @@ schema:
      post:
        200:
          - '$.result.tags.[*]' //Ignore everything inside tags field
-         - '$.result.some-changing-key:a' //Ignore 'some-changing-field'. Note the leading :a 
+         - '$.result.some-changing-key:a' //Ignore 'some-changing-key'. Note the leading :a 
 ```
 
 and then you can convert your postman collection to swagger definition without these fields:
