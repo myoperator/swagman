@@ -14,7 +14,6 @@ class pmrequest(object):
 
     paramlocations = {
         'header': 'getHeader',
-
     }
 
     def __init__(self, request):

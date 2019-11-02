@@ -59,13 +59,14 @@ class Spec(object):
         requestparams = []
         params = request.getParams()
 
-        for location, param in params.items():                     
+        for location, param in params.items():
             for eachparam in param:
                 schema = dict(type='string')
                 if eachparam.get('type', None) is not None:
                     schema['type'] = postman_to_openapi_typemap.get(eachparam.get('type'), 'string')
                 if eachparam.get('value', None) is not None:
                     schema['default'] = eachparam.get('value')
+                    schema['example'] = eachparam.get('value')
                 requestparams.append({
                     "in": location,
                     "name": eachparam.get('name', ''),
@@ -148,13 +149,17 @@ class Spec(object):
             responseBody = self.filterResponse(camelizeKey, reqtype, code, response)
             responseSchema = PostmanParser.schemawalker(responseBody)
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
+            self.add_component_schema('example' + camelizeKey + str(code), responseBody)
             operations[reqtype]['operationId'] = camelizeKey + reqtype
             operations[reqtype]['parameters'] = self.get_params(item['request'])
             if requestbody:
                 operations[reqtype]['requestBody'] = dict(
                     content = {
                         requestbodytype: dict(
-                            schema = requestbodyschema
+                            schema = requestbodyschema,
+                            example = {
+                                code: requestbody
+                            }
                         )
                     }
                 )
@@ -162,7 +167,8 @@ class Spec(object):
                 'description': response.getName(),
                 'content': {
                     response.getHeader('Content-Type'): {
-                        "schema": self.get_ref('schema', (camelizeKey + str(code)))
+                        "schema": self.get_ref('schema', (camelizeKey + str(code))),
+                        "example": self.get_ref('schema', 'example' + camelizeKey + str(code)),
                     }
                 }
             }
