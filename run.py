@@ -15,7 +15,7 @@ def get_ignore_file(ignorefile):
         return ignoreschema
 
 @click.command()
-@click.option("--format", '-f', default='yaml', help="Format to output. One of json or yaml")
+@click.option("--format", '-f', default='yaml', help="Format to output. One of json or yaml. Defaults to yaml")
 @click.option("--ignore", '-i', help="Ignore file in yaml or json")
 @click.argument('POSTMANFILE')
 @click.argument('OUTFILE')
