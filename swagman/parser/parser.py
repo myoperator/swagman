@@ -15,7 +15,7 @@ python2schematypes = {
 class PostmanParser(object):
     def __init__(self, jsoncollection):
         self.pmcollection = jsoncollection
-    
+
     def _parse(self):
         pass
 
@@ -46,29 +46,29 @@ class PostmanParser(object):
             schema['items'] = dict()
             if len(types) is 0:
                 schema['items'] = {}
-            elif len(types) is 1:
+            elif len(types) > 1:
                 schema['items']['oneOf'] = [cls.schemawalker(v) for v in types]
-            else: 
+            else:
                 schema['items'] = cls.schemawalker(types[0])
         return schema
-    
+
     @property
     def title(self):
         return self.pmcollection['info'].get('name', '')
-    
+
     @property
     def description(self):
         return self.pmcollection['info'].get('description', 'TODO: Add Description')
-    
+
     @property
     def version(self):
         return self.pmcollection['info'].get('version', '1.0.0')
-    
+
     @property
     #@TODO Add more concrete way to look for base host
     def host(self):
         return 'example.com'
-    
+
     @property
     def basepath(self):
         return '/'
@@ -76,7 +76,7 @@ class PostmanParser(object):
     @property
     def schemes(self):
         return ['http']
-    
+
     @classmethod
     def camelize(cls, string):
         return ''.join(a.capitalize() for a in split('([^a-zA-Z0-9])', string) if a.isalnum())
@@ -86,7 +86,7 @@ class PostmanParser(object):
         collectitem = dict()
         for item in content:
             if 'item' in item:
-                collectitem = cls.walk(item['item'], key, modifier, filter_)
+                collectitem = cls.walker(item['item'], key, modifier, filter_)
             else:
                 #@TODO replace template with env vars if found
                 item = cls.replaceenv(item)
@@ -110,15 +110,15 @@ class PostmanParser(object):
     @staticmethod
     def pathParser(item):
         return item['request']['url']['raw']
-    
+
     @staticmethod
     def requestParser(item):
         return pmrequest(item['request'])
-    
+
     @staticmethod
     def responseParser(item):
         return [pmresponse(response) for response in item['response']]
-    
+
     @staticmethod
     def schemaParser(item):
         schema = dict()
@@ -128,7 +128,7 @@ class PostmanParser(object):
             schemaresponse = pmschema(response)
             schema[(key + str(response.getCode()))] = schemaresponse.getSchema()
         return schema
-    
+
     def getSchemas(self, path=None):
         return self.walker(
             self.pmcollection['item'],
