@@ -1,5 +1,4 @@
 from re import split
-import time
 import jsonpath_rw
 from .pmrequest import pmrequest
 from .pmresponse import pmresponse
