@@ -82,7 +82,7 @@ class Spec(object):
                 yield path_element
             yield str(match.path)
 
-    def json_update_path(self, json, path, value, skipkey=False):
+    def json_update_path(self, json, path, value):
         '''Update JSON dictionnary PATH with VALUE. Return updated JSON'''
         try:
             first = next(path)
@@ -92,26 +92,21 @@ class Spec(object):
                     first = int(first[1:-1])
                 except ValueError:
                     pass
-            if skipkey:
-                try:
-                    del json[first]
-                except Exception:
-                    pass
-            else:
-                json[first] = self.json_update_path(json[first], path, value, skipkey)
+            json[first] = self.json_update_path(json[first], path, value)
             return json
         except StopIteration:
             return value
 
     def getFilters(self, path, method, code):
-        if len(self.ignoreschema.keys()) > 0:
-            for _path, schemas in self.ignoreschema['schema'].items():
-                if PostmanParser.camelize(_path) == path:
-                    for _method, responsecode in schemas.items():
-                        if _method == method:
-                            return responsecode.get(code, [])
+        if not len(self.ignoreschema.keys()):
+            return []
+        for _path, schemas in self.ignoreschema['schema'].items():
+            if PostmanParser.camelize(_path) == path:
+                for _method, responsecode in schemas.items():
+                    if _method == method:
+                        return responsecode.get(code, [])
         return []
-    
+
     def parse_skip(self, expr):
         type_explode = expr.split(':')
         if len(type_explode) > 1 and type_explode[-1] == 'a':
@@ -127,8 +122,9 @@ class Spec(object):
                 expr = expr if expr else jsonfilter
                 jsonpath_expr = jsonpath_rw.parse(expr)
                 matches = jsonpath_expr.find(responsejson)
+                ignoreprop = PostmanParser.IGNOREPROPKEYVAL if skip else PostmanParser.IGNOREPROP
                 for match in matches:
-                    responsejson = self.json_update_path(responsejson, self.json_get_path(match), {}, skip)
+                    responsejson = self.json_update_path(responsejson, self.json_get_path(match), ignoreprop)
         return responsejson
 
     def get_operations(self, item):

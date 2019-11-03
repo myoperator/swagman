@@ -1,4 +1,5 @@
 from re import split
+import jsonpath_rw
 from .pmrequest import pmrequest
 from .pmresponse import pmresponse
 from .pmschema import pmschema
@@ -13,6 +14,9 @@ python2schematypes = {
 }
 
 class PostmanParser(object):
+    IGNOREPROP =  '__IGNOREPROPSWAGMAN'
+    IGNOREPROPKEYVAL =  '__IGNOREPROPSWAGMANKEYVAL'
+
     def __init__(self, jsoncollection):
         self.pmcollection = jsoncollection
 
@@ -33,12 +37,19 @@ class PostmanParser(object):
             return dict(type = 'string', nullable=True)
         (_type, _format) = python2schematypes[type(item)]
         schema = dict(type = _type)
+        if isinstance(item, str):
+            if item is cls.IGNOREPROP:
+                schema = dict(additionalProperties = {})
         if isinstance(item, dict):
             schema['properties'] = dict()
-            if(len(item.keys()) > 0): schema['required'] = []
+            if(len(item.keys()) > 0):
+                schema['required'] = []
             for k, v in item.items():
-                schema['required'].append(k)
-                schema['properties'][k] = cls.schemawalker(v)
+                if v is cls.IGNOREPROPKEYVAL:
+                    schema['properties']['additionalProperties'] = {}
+                else:
+                    schema['required'].append(k)
+                    schema['properties'][k] = cls.schemawalker(v)
         elif isinstance(item, int):
             schema['format'] = _format
         elif isinstance(item, list):
@@ -47,9 +58,9 @@ class PostmanParser(object):
             if len(types) is 0:
                 schema['items'] = {}
             elif len(types) > 1:
-                schema['items']['oneOf'] = [cls.schemawalker(v) for v in types]
+                schema['items']['allOf'] = [cls.schemawalker(v) for v in item]
             else:
-                schema['items'] = cls.schemawalker(types[0])
+                schema['items'] = cls.schemawalker(item[0])
         return schema
 
     @property
