@@ -1,5 +1,8 @@
-from re import split
+import re
+import os
 import jsonpath_rw
+import jsonschema
+import json
 from .pmrequest import pmrequest
 from .pmresponse import pmresponse
 from .pmschema import pmschema
@@ -17,11 +20,30 @@ class PostmanParser(object):
     IGNOREPROP =  '__IGNOREPROPSWAGMAN'
     IGNOREPROPKEYVAL =  '__IGNOREPROPSWAGMANKEYVAL'
 
+    DEFAULT_PM_SCHEMA = '2.1.0.json'
+
     def __init__(self, jsoncollection):
         self.pmcollection = jsoncollection
+        self.validateSchema()
 
-    def _parse(self):
-        pass
+    def validateSchema(self):
+        schemaVer = self.schemaVersion.replace('v', '')
+        schemaPath = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__), '..'))
+        with open(f'{schemaPath}/schema/{schemaVer}.json') as f:
+            try:
+                schema = json.load(f)
+            except Exception:
+                return True
+        if schema:
+            jsonschema.validate(instance=self.pmcollection, schema=schema)
+
+    @property
+    def schemaVersion(self):
+        search = re.search('^http[s].\/\/.*\/(.*)\/collection\.json', self.schema)
+        if search and search.group(1):
+            return  search.group(1)
+        return None
 
     @classmethod
     def getArrayTypes(cls, items):
@@ -66,6 +88,10 @@ class PostmanParser(object):
     @property
     def title(self):
         return self.pmcollection['info'].get('name', '')
+    
+    @property
+    def schema(self):
+        return self.pmcollection['info'].get('schema', self.DEFAULT_PM_SCHEMA)
 
     @property
     def description(self):
@@ -90,7 +116,7 @@ class PostmanParser(object):
 
     @classmethod
     def camelize(cls, string):
-        return ''.join(a.capitalize() for a in split('([^a-zA-Z0-9])', string) if a.isalnum())
+        return ''.join(a.capitalize() for a in re.split('([^a-zA-Z0-9])', string) if a.isalnum())
 
     @classmethod
     def walker(cls, content, key=None, modifier=None, filter_=None):
