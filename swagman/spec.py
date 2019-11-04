@@ -1,6 +1,6 @@
 import random
 import re, json
-from apispec import APISpec
+from .apispec.src.apispec import APISpec
 from .parser.parser import PostmanParser
 import jsonpath_rw
 #from .ignore import IgnorePlugin
@@ -45,6 +45,16 @@ class Spec(object):
         self.spec.components.response(name, schema)
         return self
     
+    def add_component_example(self, name, schema):
+        self._counter[name] = 0
+        try:
+            self.spec.components.example(name, schema)
+        except DuplicateComponentNameError as e:
+            # new schema has same repr?
+            self._counter[name] += 1
+            self.spec.components.example(name + '_' + str(self._counter[name]), schema)
+        return self
+
     def add_component_schema(self, name, schema):
         self._counter[name] = 0
         try:
@@ -145,7 +155,9 @@ class Spec(object):
             responseBody = self.filterResponse(camelizeKey, reqtype, code, response)
             responseSchema = PostmanParser.schemawalker(responseBody)
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
-            self.add_component_schema('example' + camelizeKey + str(code), responseBody)
+            self.add_component_example('example' + camelizeKey + str(code), dict(
+                value = responseBody
+            ))
             operations[reqtype]['operationId'] = camelizeKey + reqtype
             operations[reqtype]['parameters'] = self.get_params(item['request'])
             if requestbody:
@@ -153,9 +165,7 @@ class Spec(object):
                     content = {
                         requestbodytype: dict(
                             schema = requestbodyschema,
-                            example = {
-                                code: requestbody
-                            }
+                            example = requestbody
                         )
                     }
                 )
@@ -164,7 +174,9 @@ class Spec(object):
                 'content': {
                     response.getHeader('Content-Type'): {
                         "schema": self.get_ref('schema', (camelizeKey + str(code))),
-                        "example": self.get_ref('schema', 'example' + camelizeKey + str(code)),
+                        "examples": {
+                            response.getHeader('Content-Type'): self.get_ref('example', 'example' + camelizeKey + str(code)),
+                        }
                     }
                 }
             }
