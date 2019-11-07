@@ -1,6 +1,6 @@
 import random
 import re, json
-from .apispec.src.apispec import APISpec
+from apispec import APISpec
 from .parser.parser import PostmanParser
 import jsonpath_rw
 #from .ignore import IgnorePlugin
@@ -30,7 +30,8 @@ class Spec(object):
             **options
         )
         self.ignoreschema = ignoreschema
-        self._counter = {}
+        self._counter = {'example': {}, 'schema': {}}
+        self._examples = {}
 
     def set_title(self, title=None):
         self.spec.title = title or self.title
@@ -46,23 +47,32 @@ class Spec(object):
         return self
     
     def add_component_example(self, name, schema):
-        self._counter[name] = 0
+        if self._counter['example'].get(name, None) is None:
+            self._counter['example'] =  {name: 0}
+            _name = name
+        else:
+            self._counter['example'][name] += 1
+            _name = name + '_' + str(self._counter['example'][name])
         try:
-            self.spec.components.example(name, schema)
+            self.spec.components.example(_name, schema)
         except DuplicateComponentNameError as e:
             # new schema has same repr?
-            self._counter[name] += 1
-            self.spec.components.example(name + '_' + str(self._counter[name]), schema)
+            self.add_component_example(name, schema)
         return self
 
+
     def add_component_schema(self, name, schema):
-        self._counter[name] = 0
+        if self._counter['schema'].get(name, None) is None:
+            self._counter['schema'] =  {name: 0}
+            _name = name
+        else:
+            self._counter['schema'][name] += 1
+            _name = name + '_' + str(self._counter['schema'][name])
         try:
-            self.spec.components.schema(name, schema)
+            self.spec.components.schema(_name, schema)
         except DuplicateComponentNameError as e:
             # new schema has same repr?
-            self._counter[name] += 1
-            self.spec.components.schema(name + '_' + str(self._counter[name]), schema)
+            self.add_component_schema(name, schema)
         return self
 
     def get_params(self, request):
@@ -154,8 +164,9 @@ class Spec(object):
             reqtype = response.getMethod().lower()
             responseBody = self.filterResponse(camelizeKey, reqtype, code, response)
             responseSchema = PostmanParser.schemawalker(responseBody)
+            camelizeKeyExample = PostmanParser.camelize(response.getName())
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
-            self.add_component_example('example' + camelizeKey + str(code), dict(
+            self.set_example((camelizeKey + str(code)), camelizeKeyExample, dict(
                 value = responseBody
             ))
             operations[reqtype]['operationId'] = camelizeKey + reqtype
@@ -174,15 +185,13 @@ class Spec(object):
                 'content': {
                     response.getHeader('Content-Type'): {
                         "schema": self.get_ref('schema', (camelizeKey + str(code))),
-                        "examples": {
-                            response.getHeader('Content-Type'): self.get_ref('example', 'example' + camelizeKey + str(code)),
-                        }
+                        "examples": self.get_example((camelizeKey + str(code)), camelizeKeyExample)
                     }
                 }
             }
-        
+
         # Reset schema counter
-        self._counter = {}
+        self._counter = {'example': {}, 'schema': {}}
         # Return new dict copy from original, containing only filled responses
         # since python3 doesn't allow mutating dict during iteration, that's
         # the best I can do currently. 
@@ -192,10 +201,25 @@ class Spec(object):
             if v['responses']:
                 newdict[k] = v
         return newdict
+    
+    def set_example(self, responseKey, exampleKey, exampleBody):
+        if responseKey in self._examples:
+            self._examples[responseKey][exampleKey] = exampleBody
+        else:
+            self._examples = {responseKey: {exampleKey: exampleBody}}
+        self.add_component_example((responseKey + exampleKey),  exampleBody)
+        
+
+    def get_example(self, responseKey, exampleKey):
+        examples = self._examples[responseKey]
+        for exampleKey, example in examples.items():
+            ref = self.get_ref('example', responseKey + exampleKey)
+            examples[exampleKey] = ref
+        return examples
 
     def get_ref(self, holder, name):
         refs = self.spec.get_ref(holder, name)
-        counter = self._counter.get(name, 0)
+        counter = self._counter[holder].get(name, 0)
         if counter > 0:
             refs = dict(oneOf=[refs])
             for i in range(1, (counter+1)):
