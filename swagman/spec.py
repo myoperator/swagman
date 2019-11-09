@@ -172,7 +172,7 @@ class Spec(object):
             camelizeKeyExample = PostmanParser.camelize(response.getName())
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
             if requestbody:
-                self.set_example(('request' + camelizeKey + str(code)), camelizeKeyExample, dict(
+                self.set_example(('request' + camelizeKey), camelizeKeyExample, dict(
                     value = requestbody
                 ))
             self.set_example(('response' + camelizeKey + str(code)), camelizeKeyExample, dict(
@@ -185,7 +185,7 @@ class Spec(object):
                     content = {
                         requestbodytype: dict(
                             schema = requestbodyschema,
-                            examples = self.get_example(('request' + camelizeKey + str(code)), camelizeKeyExample)
+                            examples = self.get_example(('request' + camelizeKey), camelizeKeyExample)
                         )
                     }
                 )
