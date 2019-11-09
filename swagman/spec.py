@@ -160,13 +160,22 @@ class Spec(object):
         requestbodyschema = PostmanParser.schemawalker(requestbody)
         requestbodytype = item['request'].getBodyContent()
         for response in item['responses']:
+            if not item['request'].getBody():
+                requestbody = response.getRequestBody()
+                requestbodyschema = PostmanParser.schemawalker(requestbody)
+                requestbodytype = response.getRequestHeader('Content-Type')
+
             code = response.getCode()
             reqtype = response.getMethod().lower()
             responseBody = self.filterResponse(camelizeKey, reqtype, code, response)
             responseSchema = PostmanParser.schemawalker(responseBody)
             camelizeKeyExample = PostmanParser.camelize(response.getName())
             ref = self.add_component_schema((camelizeKey + str(code)), responseSchema)
-            self.set_example((camelizeKey + str(code)), camelizeKeyExample, dict(
+            if requestbody:
+                self.set_example(('request' + camelizeKey + str(code)), camelizeKeyExample, dict(
+                    value = requestbody
+                ))
+            self.set_example(('response' + camelizeKey + str(code)), camelizeKeyExample, dict(
                 value = responseBody
             ))
             operations[reqtype]['operationId'] = camelizeKey + reqtype
@@ -176,7 +185,7 @@ class Spec(object):
                     content = {
                         requestbodytype: dict(
                             schema = requestbodyschema,
-                            example = requestbody
+                            examples = self.get_example(('request' + camelizeKey + str(code)), camelizeKeyExample)
                         )
                     }
                 )
@@ -185,7 +194,7 @@ class Spec(object):
                 'content': {
                     response.getHeader('Content-Type'): {
                         "schema": self.get_ref('schema', (camelizeKey + str(code))),
-                        "examples": self.get_example((camelizeKey + str(code)), camelizeKeyExample)
+                        "examples": self.get_example(('response' + camelizeKey + str(code)), camelizeKeyExample)
                     }
                 }
             }
@@ -206,14 +215,14 @@ class Spec(object):
         if responseKey in self._examples:
             self._examples[responseKey][exampleKey] = exampleBody
         else:
-            self._examples = {responseKey: {exampleKey: exampleBody}}
+            self._examples[responseKey] = {exampleKey: exampleBody}
         self.add_component_example((responseKey + exampleKey),  exampleBody)
         
 
     def get_example(self, responseKey, exampleKey):
         examples = self._examples[responseKey]
         for exampleKey, example in examples.items():
-            ref = self.get_ref('example', responseKey + exampleKey)
+            ref = self.get_ref('example', (responseKey + exampleKey))
             examples[exampleKey] = ref
         return examples
 
