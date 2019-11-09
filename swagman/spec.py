@@ -176,7 +176,7 @@ class Spec(object):
                     value = requestbody
                 ))
             self.set_example(('response' + camelizeKey + str(code)), camelizeKeyExample, dict(
-                value = responseBody
+                value = response.getBody()
             ))
             operations[reqtype]['operationId'] = camelizeKey + reqtype
             operations[reqtype]['parameters'] = self.get_params(item['request'])
