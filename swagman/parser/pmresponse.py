@@ -1,5 +1,12 @@
 import json
 
+_postman_previewlanguage = dict(
+    json = 'application/json',
+    text = 'text/plain',
+    html = 'text/html',
+    xml = 'application/xml',
+)
+
 class pmresponse(object):
 
     def __init__(self, response):
@@ -65,12 +72,24 @@ class pmresponse(object):
 
             raise Exception('Header not found')
         except Exception:
-            return 'text/html' if header == 'Content-Type' else None
+            # Check for `_postman_previewlanguage` header
+            if header == 'Content-Type':
+                return _postman_previewlanguage.get(
+                    self.response['_postman_previewlanguage'].lower() \
+                        if '_postman_previewlanguage' in self.response \
+                            else 'text',
+                'text/html')
+            return None
 
     def getBody(self):
         responsestr = self.response['body'] if 'body' in self.response \
                         else None
-        try:
-            return json.loads(responsestr)
-        except Exception:
-            return responsestr
+        if responsestr:
+            header = self.getHeader('Content-Type')
+            if 'text/' in header:
+                return responsestr
+            try:
+                return json.loads(responsestr)
+            except Exception:
+                return responsestr
+        return responsestr
